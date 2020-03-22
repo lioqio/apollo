@@ -42,8 +42,8 @@ std::string LatLonControllerSubmodule::Name() const {
 
 bool LatLonControllerSubmodule::Init() {
   // lateral controller initialization
-  CHECK(cyber::common::GetProtoFromFile(FLAGS_lateral_controller_conf_file,
-                                        &lateral_controller_conf_))
+  ACHECK(cyber::common::GetProtoFromFile(FLAGS_lateral_controller_conf_file,
+                                         &lateral_controller_conf_))
       << "Unable to load lateral controller conf file: "
       << FLAGS_lateral_controller_conf_file;
 
@@ -53,8 +53,8 @@ bool LatLonControllerSubmodule::Init() {
     return false;
   }
   // longitudinal controller
-  CHECK(cyber::common::GetProtoFromFile(FLAGS_longitudinal_controller_conf_file,
-                                        &longitudinal_controller_conf_))
+  ACHECK(cyber::common::GetProtoFromFile(
+      FLAGS_longitudinal_controller_conf_file, &longitudinal_controller_conf_))
       << "Unable to load longitudinal controller conf file: " +
              FLAGS_longitudinal_controller_conf_file;
 
@@ -67,15 +67,22 @@ bool LatLonControllerSubmodule::Init() {
   control_core_writer_ =
       node_->CreateWriter<ControlCommand>(FLAGS_control_core_command_topic);
 
-  CHECK(control_core_writer_ != nullptr);
+  ACHECK(control_core_writer_ != nullptr);
 
   return true;
 }
 
 bool LatLonControllerSubmodule::Proc(
     const std::shared_ptr<Preprocessor>& preprocessor_status) {
-  const double start_timestamp = Clock::NowInSeconds();
+  const auto start_time = Clock::Now();
   ControlCommand control_core_command;
+
+  // recording pad msg
+  if (preprocessor_status->received_pad_msg()) {
+    control_core_command.mutable_pad_msg()->CopyFrom(
+        preprocessor_status->local_view().pad_msg());
+  }
+  ADEBUG << "Lat+Lon controller submodule started ....";
 
   // skip produce control command when estop for lat+lon controller
   StatusPb pre_status = preprocessor_status->header().status();
@@ -99,21 +106,19 @@ bool LatLonControllerSubmodule::Proc(
       preprocessor_status->header().radar_timestamp());
   common::util::FillHeader(Name(), &control_core_command);
 
-  const double end_timestamp = Clock::NowInSeconds();
+  const auto end_time = Clock::Now();
 
   static apollo::common::LatencyRecorder latency_recorder(
       FLAGS_control_core_command_topic);
   latency_recorder.AppendLatencyRecord(
-      control_core_command.header().lidar_timestamp(), start_timestamp,
-      end_timestamp);
+      control_core_command.header().lidar_timestamp(), start_time, end_time);
 
   control_core_command.mutable_header()->mutable_status()->set_error_code(
       status.code());
   control_core_command.mutable_header()->mutable_status()->set_msg(
       status.error_message());
 
-  control_core_writer_->Write(
-      std::make_shared<ControlCommand>(control_core_command));
+  control_core_writer_->Write(control_core_command);
   return status.ok();
 }
 

@@ -83,14 +83,6 @@ function check_in_docker() {
 function set_lib_path() {
   export LD_LIBRARY_PATH=/usr/lib:/usr/lib/x86_64-linux-gnu
 
-  LIB_USER=/usr/lib/$(uname -m)-linux-$USER
-
-  if [ -d "${LIB_USER}" ]; then
-    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${LIB_USER}
-  else
-    warning "${LIB_USER} doesn't exist"
-  fi
-
   if [ "$RELEASE_DOCKER" == 1 ]; then
     local CYBER_SETUP="/apollo/cyber/setup.bash"
     if [ -e "${CYBER_SETUP}" ]; then
@@ -118,7 +110,7 @@ function set_lib_path() {
   fi
   export LD_LIBRARY_PATH=/usr/local/apollo/boost/lib:$LD_LIBRARY_PATH
   export LD_LIBRARY_PATH=/usr/local/apollo/paddlepaddle_dep/mkldnn/lib/:$LD_LIBRARY_PATH
-  export PYTHONPATH=/usr/local/lib/python2.7/dist-packages:${PY_LIB_PATH}:${PY_TOOLS_PATH}:${PYTHONPATH}
+  export PYTHONPATH=${PY_LIB_PATH}:${PY_TOOLS_PATH}:${PYTHONPATH}
 
   # Set teleop paths
   export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH

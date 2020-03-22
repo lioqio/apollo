@@ -20,15 +20,11 @@
 
 #include "modules/planning/tasks/optimizers/piecewise_jerk_speed/piecewise_jerk_speed_nonlinear_optimizer.h"
 
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
+#include <coin/IpIpoptApplication.hpp>
+#include <coin/IpSolveStatistics.hpp>
 
-#include "IpIpoptApplication.hpp"
-#include "IpSolveStatistics.hpp"
+#include <algorithm>
+#include <string>
 
 #include "modules/common/proto/pnc_point.pb.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
@@ -53,7 +49,7 @@ PiecewiseJerkSpeedNonlinearOptimizer::PiecewiseJerkSpeedNonlinearOptimizer(
     : SpeedOptimizer(config),
       smoothed_speed_limit_(0.0, 0.0, 0.0),
       smoothed_path_curvature_(0.0, 0.0, 0.0) {
-  CHECK(config_.has_piecewise_jerk_nonlinear_speed_config());
+  ACHECK(config_.has_piecewise_jerk_nonlinear_speed_config());
 }
 
 Status PiecewiseJerkSpeedNonlinearOptimizer::Process(
@@ -204,9 +200,6 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::SetUpStatesAndBounds(
       common::VehicleConfigHelper::GetConfig().vehicle_param();
   s_ddot_max_ = veh_param.max_acceleration();
   s_ddot_min_ = -1.0 * std::abs(veh_param.max_deceleration());
-  // TODO(Hongyi): delete this when ready to use vehicle_params
-  s_ddot_max_ = 2.0;
-  s_ddot_min_ = -4.0;
 
   // Set s_dddot boundary
   // TODO(Jinyun): allow the setting of jerk_lower_bound and move jerk config to
@@ -347,7 +340,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::SmoothSpeedLimit() {
   piecewise_jerk_problem.set_weight_ddx(10.0);
   piecewise_jerk_problem.set_weight_dddx(10.0);
 
-  piecewise_jerk_problem.set_x_ref(1.0, speed_ref);
+  piecewise_jerk_problem.set_x_ref(10.0, speed_ref);
 
   if (!piecewise_jerk_problem.Optimize(4000)) {
     std::string msg("Smoothing speed limit failed");
@@ -440,8 +433,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::OptimizeByQP(
                                                    init_states);
   piecewise_jerk_problem.set_dx_bounds(
       0.0, std::fmax(FLAGS_planning_upper_speed_limit, init_states[1]));
-  // TODO(Hongyi): delete this when ready to use vehicle_params
-  piecewise_jerk_problem.set_ddx_bounds(-4.0, 2.0);
+  piecewise_jerk_problem.set_ddx_bounds(s_ddot_min_, s_ddot_max_);
   piecewise_jerk_problem.set_dddx_bound(s_dddot_min_, s_dddot_max_);
   piecewise_jerk_problem.set_x_bounds(s_bounds_);
 
