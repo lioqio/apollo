@@ -7,12 +7,7 @@ cc_library(
     srcs = ["paddle_net.cc"],
     hdrs = ["paddle_net.h"],
     linkopts = [
-        "-lglog",
         "-lsnappy",
-        "-lboost_system",
-        "-lboost_filesystem",
-        "-lboost_thread",
-        "-lboost_program_options",
         "-lz",
         "-lsnappy",
         "-lrt",
@@ -20,8 +15,10 @@ cc_library(
         "-lpthread",
     ],
     deps = [
+        "//cyber/common:log",
         "//external:gflags",
         "//modules/perception/inference:inference_lib",
+        "@boost",
         "@com_google_protobuf//:protobuf",
         "@cuda",
         "@eigen",
